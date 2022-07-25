@@ -11,6 +11,9 @@ const querystring = require('querystring');
 const bodyParser = require('body-parser');
 const logging = require('./modules/logging.js');
 logging.RegisterConsoleLogger();
+var cors = require('cors');
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
 // Command line argument --configFile needs to be checked before loading the config, all other command line arguments are dealt with through the config object
 
@@ -49,9 +52,13 @@ var http = require('http').Server(app);
 
 if (config.UseHTTPS) {
 	//HTTPS certificate details
+	//var passphrasefile = require('./certificates/passphrase.json')
+
 	const options = {
-		key: fs.readFileSync(path.join(__dirname, './certificates/client-key.pem')),
-		cert: fs.readFileSync(path.join(__dirname, './certificates/client-cert.pem'))
+		key: fs.readFileSync(path.join(__dirname, './certificates/rzmetaverse.com-key.pem')),
+		cert: fs.readFileSync(path.join(__dirname, './certificates/rzmetaverse.com-crt.pem')),
+		ca: fs.readFileSync(path.join(__dirname, './certificates/rzmetaverse.com-chain.pem')),
+		//passphrase: passphrasefile.passphrase
 	};
 
 	var https = require('https').Server(options, app);
@@ -70,6 +77,7 @@ if (config.UseAuthentication && config.UseHTTPS) {
 }
 
 const helmet = require('helmet');
+const csp = require('helmet-csp');
 var hsts = require('hsts');
 var net = require('net');
 
@@ -161,7 +169,37 @@ try {
 }
 
 if (config.UseHTTPS) {
-	app.use(helmet());
+	
+	//app.use(helmet());
+
+	const cspOptions = {
+		directives: {
+		  // 기본 옵션을 가져옵니다.
+		  ...helmet.contentSecurityPolicy.getDefaultDirectives,
+		  
+		  // 인라인된 스크립트를 허용합니다.
+		  "script-src": ["'*'", "http://localhost", "'unsafe-inline'"],//https://rzmeta.co.kr
+		  "img-src": ["'*'", "data:", "http://localhost"],
+		}
+	  }
+	  
+	  // Helmet의 모든 기능 사용. (contentSecurityPolicy에는 custom option 적용)
+	  app.use(helmet({
+		contentSecurityPolicy: cspOptions,
+	  }));
+	
+
+	// app.use(helmet.frameguard({
+	// 	action: "allow-from",
+	// 	domain: "http://localhost"
+	// 	}));
+
+	app.use(csp({
+		directives: {
+			frameSrc: ['http://localhost'],
+			frameAncestors: ['*']
+		}
+	}));
 
 	app.use(hsts({
 		maxAge: 15552000  // 180 days in seconds
@@ -670,15 +708,29 @@ if (config.UseMatchmaker) {
 		}
 
 		// Add the new playerConnected flag to the message body to the MM
-		message = {
-			type: 'connect',
-			address: typeof serverPublicIp === 'undefined' ? '127.0.0.1' : serverPublicIp,
-			port: httpPort,
-			ready: streamer && streamer.readyState === 1,
-			playerConnected: playerConnected
-		};
+		if (config.UseHTTPS)
+		{
+			message = {
+				type: 'connect',
+				address: typeof serverPublicIp === 'undefined' ? '127.0.0.1' : serverPublicIp,
+				port: httpsPort,
+				ready: streamer && streamer.readyState === 1,
+				playerConnected: playerConnected
+			};			
+		}
+		else
+		{
+			message = {
+				type: 'connect',
+				address: typeof serverPublicIp === 'undefined' ? '127.0.0.1' : serverPublicIp,
+				port: httpPort,
+				ready: streamer && streamer.readyState === 1,
+				playerConnected: playerConnected
+			};
+		}
 
 		matchmaker.write(JSON.stringify(message));
+		
 	});
 
 	matchmaker.on('error', (err) => {

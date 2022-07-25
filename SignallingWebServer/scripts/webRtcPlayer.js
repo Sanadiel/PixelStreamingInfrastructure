@@ -40,7 +40,7 @@ function webRtcPlayer(parOptions) {
     this.sfu = false;
 
     this.sdpConstraints = {
-      offerToReceiveAudio: 1, //Note: if you don't need audio you can get improved latency by turning this off.
+      offerToReceiveAudio: 0, //Note: if you don't need audio you can get improved latency by turning this off.
       offerToReceiveVideo: 1,
       voiceActivityDetection: false
     };

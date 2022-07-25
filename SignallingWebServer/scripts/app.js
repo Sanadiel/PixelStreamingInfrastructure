@@ -270,12 +270,13 @@ function onFullscreenChange() {
 
 function parseURLParams() {
     let urlParams = new URLSearchParams(window.location.search);
-    inputOptions.controlScheme = (urlParams.has('hoveringMouse') ?  ControlSchemeType.HoveringMouse : ControlSchemeType.LockedMouse);
+    inputOptions.controlScheme = (urlParams.has('hoveringMouse') ?  ControlSchemeType.HoveringMouse : inputOptions.controlScheme);
     let schemeToggle = document.getElementById("control-scheme-text");
+    var controlBtn = document.getElementById('control-tgl');
     switch (inputOptions.controlScheme) {
         case ControlSchemeType.HoveringMouse:
-            schemeToggle.innerHTML = "Control Scheme: Hovering Mouse";
-            break;
+            schemeToggle.innerHTML = "Control Scheme: Hovering Mouse";           
+            urlParams.set('hoveringMouse', "false");
         case ControlSchemeType.LockedMouse:
             schemeToggle.innerHTML = "Control Scheme: Locked Mouse";
             break;
@@ -290,7 +291,9 @@ function parseURLParams() {
         watermark.style.display = 'none';
     }
 
-    inputOptions.hideBrowserCursor = (urlParams.has('hideBrowserCursor') ?  true : false);
+    inputOptions.hideBrowserCursor = (urlParams.has('hideBrowserCursor') ?  true : inputOptions.hideBrowserCursor);
+
+    console.log(urlParams);
 }
 
 
@@ -1256,7 +1259,7 @@ const ControlSchemeType = {
 let inputOptions = {
     // The control scheme controls the behaviour of the mouse when it interacts
     // with the WebRTC player.
-    controlScheme: ControlSchemeType.LockedMouse,
+    controlScheme: ControlSchemeType.HoveringMouse,
 
     // Browser keys are those which are typically used by the browser UI. We
     // usually want to suppress these to allow, for example, UE to show shader
@@ -1695,12 +1698,21 @@ function setupNormalizeAndQuantize() {
     }
 }
 
+var PrevMoveCoordData = null;
 function emitMouseMove(x, y, deltaX, deltaY) {
     if (print_inputs) {
         console.log(`x: ${x}, y:${y}, dX: ${deltaX}, dY: ${deltaY}`);
     }
     let coord = normalizeAndQuantizeUnsigned(x, y);
     let delta = normalizeAndQuantizeSigned(deltaX, deltaY);
+
+    if(coord.inRange == false)	{
+		return;
+	} 
+    else {
+        PrevMoveCoordData = coord;
+    }
+
     let Data = new DataView(new ArrayBuffer(9));
     Data.setUint8(0, MessageType.MouseMove);
     Data.setUint16(1, coord.x, true);
@@ -1715,6 +1727,11 @@ function emitMouseDown(button, x, y) {
         console.log(`mouse button ${button} down at (${x}, ${y})`);
     }
     let coord = normalizeAndQuantizeUnsigned(x, y);
+
+    if(coord.inRange == false)	{
+		return;
+	}
+
     let Data = new DataView(new ArrayBuffer(6));
     Data.setUint8(0, MessageType.MouseDown);
     Data.setUint8(1, button);
@@ -1729,11 +1746,20 @@ function emitMouseUp(button, x, y) {
     }
     let coord = normalizeAndQuantizeUnsigned(x, y);
     let Data = new DataView(new ArrayBuffer(6));
-    Data.setUint8(0, MessageType.MouseUp);
-    Data.setUint8(1, button);
-    Data.setUint16(2, coord.x, true);
-    Data.setUint16(4, coord.y, true);
-    sendInputData(Data.buffer);
+    if(coord.inRange == false)	{
+        Data.setUint8(0, MessageType.MouseUp);
+        Data.setUint8(1, button);
+        Data.setUint16(2, PrevMoveCoordData.x, true);
+        Data.setUint16(4, PrevMoveCoordData.y, true);
+        sendInputData(Data.buffer);
+	}
+    else {
+        Data.setUint8(0, MessageType.MouseUp);
+        Data.setUint8(1, button);
+        Data.setUint16(2, coord.x, true);
+        Data.setUint16(4, coord.y, true);
+        sendInputData(Data.buffer);
+    }
 }
 
 function emitMouseWheel(delta, x, y) {
@@ -2398,6 +2424,8 @@ function clearMouseEvents(playerElement) {
 
 function toggleControlScheme() {
     let schemeToggle = document.getElementById("control-scheme-text");
+
+    console.log(inputOptions.controlScheme);
     
     switch (inputOptions.controlScheme) {
         case ControlSchemeType.HoveringMouse:
