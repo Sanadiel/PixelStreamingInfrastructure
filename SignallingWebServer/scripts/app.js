@@ -2023,29 +2023,46 @@ const MouseButtonsMask = {
     FifthButton: 16 // Browser Forward button.
 };
 
+
+var PrevMoveCoordData = null;
+
 // If the user has any mouse buttons pressed then release them.
 function releaseMouseButtons(buttons, x, y) {
     let coord = normalizeAndQuantizeUnsigned(x, y);
+    let delta;
+
+    if(coord.inRange == false)	{
+        delta = coord;
+    } else {
+        delta = PrevMoveCoordData;
+    }
+
+
     if (buttons & MouseButtonsMask.PrimaryButton) {
-        toStreamerHandlers.MouseUp("MouseUp", [MouseButton.MainButton, coord.x, coord.y]);
+        toStreamerHandlers.MouseUp("MouseUp", [MouseButton.MainButton, delta.x, delta.y]);
     }
     if (buttons & MouseButtonsMask.SecondaryButton) {
-        toStreamerHandlers.MouseUp("MouseUp", [MouseButton.SecondaryButton, coord.x, coord.y]);
+        toStreamerHandlers.MouseUp("MouseUp", [MouseButton.SecondaryButton, delta.x, delta.y]);
     }
     if (buttons & MouseButtonsMask.AuxiliaryButton) {
-        toStreamerHandlers.MouseUp("MouseUp", [MouseButton.AuxiliaryButton, coord.x, coord.y]);
+        toStreamerHandlers.MouseUp("MouseUp", [MouseButton.AuxiliaryButton, delta.x, delta.y]);
     }
     if (buttons & MouseButtonsMask.FourthButton) {
-        toStreamerHandlers.MouseUp("MouseUp", [MouseButton.FourthButton, coord.x, coord.y]);
+        toStreamerHandlers.MouseUp("MouseUp", [MouseButton.FourthButton, delta.x, delta.y]);
     }
     if (buttons & MouseButtonsMask.FifthButton) {
-        toStreamerHandlers.MouseUp("MouseUp", [MouseButton.FifthButton, coord.x, coord.y]);
+        toStreamerHandlers.MouseUp("MouseUp", [MouseButton.FifthButton, delta.x, delta.y]);
     }
 }
 
 // If the user has any Mouse buttons pressed then press them again.
 function pressMouseButtons(buttons, x, y) {
     let coord = normalizeAndQuantizeUnsigned(x, y);
+
+    if(coord.inRange == false)	{
+		return;        
+	}
+
     if (buttons & MouseButtonsMask.PrimaryButton) {
         toStreamerHandlers.MouseDown("MouseDown", [MouseButton.MainButton, coord.x, coord.y]);
     }
@@ -2072,6 +2089,12 @@ function registerInputs(playerElement) {
 }
 
 function createOnScreenKeyboardHelpers(htmlElement) {
+
+    CreateTextBox(htmlElement);
+    // 강제 리턴
+    return;
+
+
     if (document.getElementById('hiddenInput') === null) {
         hiddenInput = document.createElement('input');
         hiddenInput.id = 'hiddenInput';
@@ -2095,7 +2118,87 @@ function createOnScreenKeyboardHelpers(htmlElement) {
     }
 }
 
+function CreateTextBox(htmlElement) {
+    
+    // 검수모드 텍스트 박스
+    
+    // TextBox = document.createElement('TEXTAREA');
+	// TextBox.id = 'TextBox';
+	//TextBox.setAttribute("type", "text");
+	TextBox.placeholder = '입력하세요';
+	//htmlElement.appendChild(TextBox);
+
+	InputTextField.classList.add('hiddenState');
+   
+    TextSubmitButton.onclick = function() {
+
+        InputTextField.classList.add('hiddenState');
+		StringParseCall(TextBox.value);
+		TextBox.value = '';
+    }
+
+    //InputTextField
+
+    TextBox.onmousedown = function(e) {
+        emitMouseDown(e.button, x, y);
+    };
+
+    TextBox.onmouseup = function(e) {
+        emitMouseUp(e.button, x, y);
+    };
+
+    // playerElement.onmousewheel = function(e) {
+    //     emitMouseWheel(e.wheelDelta, x, y);
+    // };
+
+    TextBox.pressMouseButtons = function(e) {
+        pressMouseButtons(e.buttons, x, y);
+    };
+
+    TextBox.releaseMouseButtons = function(e) {
+        releaseMouseButtons(e.buttons, x, y);
+    };
+
+}
+
+function ShowTextBox(command){
+    //검수모드 박스 
+    if (command.showOnScreenKeyboard) {
+		InputTextField.classList.remove('hiddenState');
+        TextBox.zIndex = 2;
+		let pos = unquantizeAndDenormalizeUnsigned(command.x, command.y);
+		
+		TextBox.style.top = pos.y.toString() + 'px';
+		TextBox.style.left = (pos.x - 0).toString() + 'px';
+
+        TextSubmitButton.style.top = TextBox.style.top;
+        TextSubmitButton.style.left = TextBox.style.left;
+		TextBox.focus();
+
+        
+		//connect_on_Text = true;
+
+
+
+		//console.log('show');
+		//console.log(`x: ${pos.x}, y:${pos.y}`);
+	} else {
+
+		// TextBox.classList.add('hiddenState');
+
+		// StringParseCall(TextBox.value);
+
+		// TextBox.value = '';
+
+		//connect_on_Text = false;
+	}
+}
 function showOnScreenKeyboard(command) {
+
+    ShowTextBox(command);
+	// 강제 리턴
+	return;
+
     if (command.showOnScreenKeyboard) {
         // Show the 'edit text' button.
         editTextButton.classList.remove('hiddenState');
@@ -2109,6 +2212,16 @@ function showOnScreenKeyboard(command) {
         // Hide the on-screen keyboard.
         hiddenInput.blur();
     }
+}
+
+function StringParseCall(item) {
+    let descriptor = {
+        InputString: item
+    };
+    emitUIInteraction(descriptor);
+    console.log(descriptor);
+
+    webRtcPlayerObj.video.focus();
 }
 
 function registerMouseEnterAndLeaveEvents(playerElement) {
@@ -2187,11 +2300,13 @@ function registerLockedMouseEvents(playerElement) {
 
         let coord = normalizeAndQuantizeUnsigned(x, y);
         let delta = normalizeAndQuantizeSigned(e.movementX, e.movementY);
-        toStreamerHandlers.MouseMove("MouseMove", [coord.x, coord.y, delta.x, delta.y]);
+        MouseCheck_Move(coord, delta);
+        //toStreamerHandlers.MouseMove("MouseMove", [coord.x, coord.y, delta.x, delta.y]);
     }
 
 
     playerElement.onmousedown = function (e) {
+        MouseCheck_Down()
         toStreamerHandlers.MouseDown("MouseDown", [e.button, coord.x, coord.y]);
     };
 
@@ -2222,19 +2337,22 @@ function registerHoveringMouseEvents(playerElement) {
     playerElement.onmousemove = function (e) {
         let coord = normalizeAndQuantizeUnsigned(e.offsetX, e.offsetY);
         let delta = normalizeAndQuantizeSigned(e.movementX, e.movementY);
-        toStreamerHandlers.MouseMove("MouseMove", [coord.x, coord.y, delta.x, delta.y]);
+        MouseCheck_Move(coord, delta);
+        //toStreamerHandlers.MouseMove("MouseMove", [coord.x, coord.y, delta.x, delta.y]);
         e.preventDefault();
     };
 
     playerElement.onmousedown = function (e) {
         let coord = normalizeAndQuantizeUnsigned(e.offsetX, e.offsetY);
-        toStreamerHandlers.MouseDown("MouseDown", [e.button, coord.x, coord.y]);
+        MouseCheck_Down(e.button, e.offsetX, e.offsetY);
+        //toStreamerHandlers.MouseDown("MouseDown", [e.button, coord.x, coord.y]);
         e.preventDefault();
     };
 
     playerElement.onmouseup = function (e) {
         let coord = normalizeAndQuantizeUnsigned(e.offsetX, e.offsetY);
-        toStreamerHandlers.MouseUp("MouseUp", [e.button, coord.x, coord.y]);
+        MouseCheck_Up(e.button, e.offsetX, e.offsetY);
+        //toStreamerHandlers.MouseUp("MouseUp", [e.button, coord.x, coord.y]);
         e.preventDefault();
     };
 
@@ -2245,7 +2363,8 @@ function registerHoveringMouseEvents(playerElement) {
     // https://github.com/facebook/react/issues/5531
     playerElement.oncontextmenu = function (e) {
         let coord = normalizeAndQuantizeUnsigned(e.offsetX, e.offsetY);
-        toStreamerHandlers.MouseUp("MouseUp", [e.button, coord.x, coord.y]);
+        MouseCheck_Up(e.button, e.offsetX, e.offsetY);
+        //toStreamerHandlers.MouseUp("MouseUp", [e.button, coord.x, coord.y]);
         e.preventDefault();
     };
 
@@ -2327,7 +2446,8 @@ function registerTouchEvents(playerElement) {
                 // is not fired with a touch device.
                 playerElement.onmouseenter(e);
                 let coord = normalizeAndQuantizeUnsigned(finger.x, finger.y);
-                toStreamerHandlers.MouseDown("MouseDown", [MouseButton.MainButton, coord.x, coord.y]);
+                MouseCheck_Down(MouseButton.MainButton, finger.x, finger.y);
+                //toStreamerHandlers.MouseDown("MouseDown", [MouseButton.MainButton, coord.x, coord.y]);
             }
             e.preventDefault();
         };
@@ -2339,7 +2459,8 @@ function registerTouchEvents(playerElement) {
                     let x = touch.clientX - playerElementClientRect.left;
                     let y = touch.clientY - playerElementClientRect.top;
                     let coord = normalizeAndQuantizeUnsigned(x, y);
-                    toStreamerHandlers.MouseUp("MouseUp", [MouseButton.MainButton, coord.x, coord.y]);
+                    MouseCheck_Up(MouseButton.MainButton, x, y)
+                    //toStreamerHandlers.MouseUp("MouseUp", );
                     // Hack: Manual mouse leave event.
                     playerElement.onmouseleave(e);
                     finger = undefined;
@@ -2357,7 +2478,8 @@ function registerTouchEvents(playerElement) {
                     let y = touch.clientY - playerElementClientRect.top;
                     let coord = normalizeAndQuantizeUnsigned(x, y);
                     let delta = normalizeAndQuantizeSigned(x - finger.x, y - finger.y);
-                    toStreamerHandlers.MouseMove("MouseMove", [coord.x, coord.y, delta.x, delta.y]);
+                    MouseCheck_Move(coord, delta);
+                    //toStreamerHandlers.MouseMove("MouseMove", [coord.x, coord.y, delta.x, delta.y]);
                     finger.x = x;
                     finger.y = y;
                     break;
@@ -2444,6 +2566,10 @@ function registerKeyboardEvents() {
             });
         }
         if (inputOptions.suppressBrowserKeys && isKeyCodeBrowserKey(e.keyCode)) {
+            e.preventDefault();
+        }
+        if(e.keyCode === 59 || e.keyCode === 192)
+        {
             e.preventDefault();
         }
     };
@@ -2731,4 +2857,49 @@ function load() {
     // Example response event listener that logs to console
     addResponseEventListener('logListener', (response) => {console.log(`Received response message from streamer: "${response}"`)})
     start(false);
+}
+
+
+
+var PrevMoveCoordData = null;
+
+function MouseCheck_Move(coord, delta) {
+    
+    console.log("MouseMove : " + coord.inRange );
+
+    if(coord.inRange == false)	{
+		return;
+	} else {
+        PrevMoveCoordData = coord;
+    }
+
+    toStreamerHandlers.MouseMove("MouseMove", [coord.x, coord.y, delta.x, delta.y]);
+}
+
+function MouseCheck_Down(button, x, y) {
+ 
+    let coord = normalizeAndQuantizeUnsigned(x, y);
+
+    console.log("MouseDown : " + coord.inRange);
+
+    if(coord.inRange == false)	{
+		return;
+	}
+
+    toStreamerHandlers.MouseDown("MouseDown", [button, coord.x, coord.y]);
+}
+
+function MouseCheck_Up(button, x, y) {
+    
+    let coord = normalizeAndQuantizeUnsigned(x, y);
+    var result;
+
+
+    if(coord.inRange == false)	{
+        result = PrevMoveCoordData;
+	} else {
+        result = coord;
+    }
+
+    toStreamerHandlers.MouseUp("MouseUp", [button, result.x, result.y]);
 }
