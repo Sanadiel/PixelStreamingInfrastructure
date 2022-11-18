@@ -17,6 +17,29 @@ Reference implementations for the various pieces needed to support a PixelStream
 - SFU (Selective Forwarding Unit)
 - Matchmaker
 
+## Container images
+
+The following container images are built from this repository:
+
+- [ghcr.io/epicgames/pixel-streaming-signalling-server](https://github.com/orgs/EpicGames/packages/container/package/pixel-streaming-signalling-server) (since Unreal Engine 5.1)
+
+## Versions
+
+We maintain versions of the servers and frontend that are compatible with existing and in-development version of Unreal Engine. 
+
+:warning: **There are breaking changes between UE versions - so make sure you get the right version**. :warning:
+
+We maintain the following in branches right now:
+
+[Master](https://github.com/EpicGames/PixelStreamingInfrastructure/tree/master) (This is our dev branch.)
+
+[UE5.1](https://github.com/EpicGames/PixelStreamingInfrastructure/tree/UE5.1)
+
+[UE5.0](https://github.com/EpicGames/PixelStreamingInfrastructure/tree/UE5.0)
+
+[UE4.27](https://github.com/EpicGames/PixelStreamingInfrastructure/tree/UE4.27)
+
+[UE4.26](https://github.com/EpicGames/PixelStreamingInfrastructure/tree/UE4.26)
 
 ## Legal
 © 2004-2022, Epic Games, Inc. Unreal and its logo are Epic’s trademarks or registered trademarks in the US and elsewhere. 
