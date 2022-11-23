@@ -112,6 +112,10 @@ img#playButton{
 	padding: 0.6rem !important;
 }
 
+#restartStream-btn {
+	padding: 0.6rem !important;
+}
+
 #overlay button:hover {
 	background-color: var(--colour3);
 	border: 3px solid var(--colour3);

@@ -1101,12 +1101,14 @@ function stopAfkWarningTimer() {
 
 // If the user interacts then reset the warning timer.
 function resetAfkWarningTimer() {
-    if (afk.active) {
+    //if (afk.active) {
         clearTimeout(afk.warnTimer);
         afk.warnTimer = setTimeout(function () {
-            showAfkOverlay();
-        }, afk.warnTimeout * 1000);
-    }
+            //showAfkOverlay();
+            console.log(`restart`);
+            restartStream();
+        }, 60 * 1000);//afk.warnTimeout * 1000);
+    //}
 }
 
 function createWebRtcOffer() {
@@ -2666,6 +2668,7 @@ function start(isReconnection) {
         resizePlayerStyle();
     } else {
         connect();
+        startAfkWarningTimer();
     }
 }
 
