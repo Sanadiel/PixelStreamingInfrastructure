@@ -7,3 +7,4 @@ node.zip
 SignallingWebServer/certificates/vimeo.json
 SignallingWebServer/certificates/sqlconnection.json
 SignallingWebServer/certificates/passphrase.json
+*.log
