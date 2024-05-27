@@ -52,13 +52,13 @@ var http = require('http').Server(app);
 
 if (config.UseHTTPS) {
 	//HTTPS certificate details
-	//var passphrasefile = require('./certificates/passphrase.json')
+	var passphrasefile = require('./certificates/passphrase.json')
 
 	const options = {
 		key: fs.readFileSync(path.join(__dirname, './certificates/rzmetaverse.com-key.pem')),
 		cert: fs.readFileSync(path.join(__dirname, './certificates/rzmetaverse.com-crt.pem')),
 		ca: fs.readFileSync(path.join(__dirname, './certificates/rzmetaverse.com-chain.pem')),
-		//passphrase: passphrasefile.passphrase
+		passphrase: passphrasefile.passphrase
 	};
 
 	var https = require('https').Server(options, app);
@@ -178,8 +178,8 @@ if (config.UseHTTPS) {
 		  ...helmet.contentSecurityPolicy.getDefaultDirectives,
 		  
 		  // 인라인된 스크립트를 허용합니다.
-		  "script-src": ["'*'", "http://localhost", "'unsafe-inline'"],//https://rzmeta.co.kr
-		  "img-src": ["'*'", "data:", "http://localhost"],
+		  "script-src": ["'*'", "https://rzmetaverse.com", "'unsafe-inline'"],//https://rzmetaverse.com
+		  "img-src": ["'*'", "data:", "https://rzmetaverse.com"],
 		}
 	  }
 	  
@@ -306,14 +306,22 @@ if (config.UseHTTPS) {
 	});
 }
 
+let streamer = null;				// WebSocket connected to Streamer
+let sfu = null;					// WebSocket connected to SFU
+let players = new Map(); 	// playerId <-> player, where player is either a web-browser or a native webrtc player
+
+
+// /pingpongendpoint에 대한 라우터
+app.get('/pingpongendpoint', (req, res) => {	
+	res.status(200).send(streamer == null ? 'Pong!' : "empty"); // 응답으로 'Pong!' 보내기
+  });
+
 console.logColor(logging.Cyan, `Running Cirrus - The Pixel Streaming reference implementation signalling server for Unreal Engine 5.1.`);
 
 let nextPlayerId = 100; // reserve some player ids
 const SFUPlayerId = "1"; // sfu is a special kind of player
 
-let streamer = null;				// WebSocket connected to Streamer
-let sfu = null;					// WebSocket connected to SFU
-let players = new Map(); 	// playerId <-> player, where player is either a web-browser or a native webrtc player
+
 
 function sfuIsConnected() {
 	return sfu && sfu.readyState == 1;

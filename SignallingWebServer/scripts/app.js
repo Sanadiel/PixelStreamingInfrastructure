@@ -2589,6 +2589,10 @@ function registerKeyboardEvents() {
                 charCode: SpecialKeyCodes.BackSpace
             });
         }
+        if (e.keyCode === 122)//f11
+        {
+            return;
+        }
         if (inputOptions.suppressBrowserKeys && isKeyCodeBrowserKey(e.keyCode)) {
             e.preventDefault();
         }
